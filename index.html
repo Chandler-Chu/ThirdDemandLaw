@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>第三需求法則｜課堂即時反饋</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a1a2e; --text: #1a1a2e; --text-muted: #6b7280;
+      --border: #e5e7eb; --bg: #f7f7f9; --success: #059669; --radius: 10px;
+    }
+    body { font-family: 'Noto Sans TC','Helvetica Neue',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    header { background: var(--navy); color: white; padding: 0 24px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 8px rgba(0,0,0,.25); }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .header-logo { font-size: 17px; font-weight: 700; color: white; }
+    .header-divider { width: 1px; height: 18px; background: rgba(255,255,255,.2); }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,.55); }
+    .header-badge { font-size: 11px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.7); padding: 3px 10px; border-radius: 99px; border: 1px solid rgba(255,255,255,.15); }
+
+    .layout { display: flex; flex: 1; max-width: 960px; margin: 0 auto; width: 100%; padding: 32px 16px 64px; gap: 24px; align-items: flex-start; }
+
+    .sidebar { width: 196px; flex-shrink: 0; position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow-y: auto; }
+    .sidebar-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--text-muted); text-transform: uppercase; padding: 0 12px 8px; }
+    .nav-list { list-style: none; }
+    .nav-item { margin-bottom: 2px; }
+    .nav-btn { width: 100%; text-align: left; padding: 8px 12px; border: none; background: transparent; border-radius: var(--radius); font-size: 12px; font-family: inherit; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all .15s; font-weight: 500; }
+    .nav-btn:hover { background: white; color: var(--text); }
+    .nav-btn.active { background: var(--navy); color: white; }
+    .nav-btn.done { color: var(--success); }
+    .nav-btn.done::after { content: '✓'; margin-left: auto; font-size: 11px; }
+    .nav-number { width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,.06); font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .nav-btn.active .nav-number { background: rgba(255,255,255,.2); }
+
+    .q-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; padding: 8px 12px; }
+    .q-dot { width: 100%; aspect-ratio: 1; border-radius: 6px; border: none; background: rgba(0,0,0,.06); font-size: 11px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+    .q-dot:hover { background: white; color: var(--text); }
+    .q-dot.active { background: var(--navy); color: white; }
+    .q-dot.done { background: #d1fae5; color: var(--success); }
+
+    .progress-wrap { margin-top: 12px; padding: 0 12px; }
+    .progress-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .progress-bar-bg { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--navy); border-radius: 99px; transition: width .4s ease; width: 0%; }
+
+    .content { flex: 1; min-width: 0; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-header { margin-bottom: 20px; }
+    .section-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); background: white; border: 1px solid var(--border); padding: 3px 10px; border-radius: 99px; margin-bottom: 10px; }
+    .section-title { font-size: 19px; font-weight: 700; line-height: 1.5; color: var(--text); }
+    .section-desc { font-size: 13px; color: var(--text-muted); margin-top: 6px; line-height: 1.7; }
+
+    .card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 14px; }
+    .field { margin-bottom: 20px; }
+    .field:last-child { margin-bottom: 0; }
+    .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .field-hint { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+
+    input[type="text"], input[type="email"], input[type="time"], textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 14px; font-family: inherit; color: var(--text); background: #fafafa;
+      outline: none; transition: border .15s,background .15s; resize: vertical;
+    }
+    input:focus, textarea:focus { border-color: var(--navy); background: white; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn-group input[type="radio"] { display: none; }
+    .btn-group label { padding: 9px 18px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; transition: all .15s; background: white; color: var(--text-muted); font-weight: 500; }
+    .btn-group input:checked + label { border-color: var(--navy); background: var(--navy); color: white; }
+
+    .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .option-grid input[type="radio"] { display: none; }
+    .option-card { border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all .15s; background: #fafafa; display: block; }
+    .option-card:hover { border-color: #9ca3af; background: white; }
+    .option-grid input:checked + .option-card { border-color: var(--navy); background: #f0f0f8; }
+    .opt-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .opt-check { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px; transition: all .15s; }
+    .option-grid input:checked + .option-card .opt-check { background: var(--navy); border-color: var(--navy); color: white; }
+    .option-grid input:checked + .option-card .opt-check::after { content: "●"; font-size: 8px; }
+    .opt-title { font-size: 13px; color: var(--text); line-height: 1.6; }
+
+    .time-hint { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
+    .nav-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .btn-prev { padding: 10px 20px; border: 1.5px solid var(--border); border-radius: 8px; background: white; font-size: 13px; font-family: inherit; color: var(--text-muted); cursor: pointer; font-weight: 500; transition: all .15s; }
+    .btn-prev:hover { border-color: var(--navy); color: var(--navy); }
+    .btn-next { padding: 11px 28px; border: none; border-radius: 8px; background: var(--navy); color: white; font-size: 14px; font-family: inherit; font-weight: 600; cursor: pointer; transition: background .15s; }
+    .btn-next:hover { background: #2d2d4e; }
+
+    .status-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 12px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+    .status-dot.ready { background: #f59e0b; }
+    .submit-btn { width: 100%; padding: 15px; border: none; border-radius: 10px; background: var(--navy); color: white; font-size: 15px; font-family: inherit; font-weight: 700; cursor: pointer; transition: background .15s; }
+    .submit-btn:hover { background: #2d2d4e; }
+    .submit-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .review-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .review-table tr { border-bottom: 1px solid var(--border); }
+    .review-table tr:last-child { border-bottom: none; }
+    .review-table th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 600; width: 28%; background: #fafafa; vertical-align: top; }
+    .review-table td { padding: 10px 12px; color: var(--text); font-weight: 500; }
+    .review-empty { color: #d1d5db; font-style: italic; }
+
+    .success-screen { display: none; text-align: center; padding: 64px 24px; }
+    .success-screen .big { font-size: 56px; margin-bottom: 20px; }
+    .success-screen h2 { font-size: 22px; font-weight: 700; color: var(--success); margin-bottom: 10px; }
+    .success-screen p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+    .success-screen .refill { margin-top: 28px; font-size: 13px; color: var(--navy); background: none; border: none; font-family: inherit; cursor: pointer; text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .layout { flex-direction: column; padding: 16px 12px 48px; gap: 0; }
+      .sidebar { width: 100%; position: static; max-height: none; margin-bottom: 16px; overflow: visible; }
+      .progress-wrap, .sidebar-label { display: none; }
+      .row-2, .option-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-logo">📋 第三需求法則</div>
+    <div class="header-divider"></div>
+    <div class="header-sub">填完後老師會即時看到</div>
+  </div>
+  <div class="header-badge">單次填寫</div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-label">填寫區塊</div>
+    <ul class="nav-list">
+      <li class="nav-item">
+        <button class="nav-btn active" data-target="s-basic" onclick="goSection('s-basic')">
+          <span class="nav-number">✦</span> 基本資料
+        </button>
+      </li>
+    </ul>
+    <div class="sidebar-label" style="margin-top:12px;">題目快速跳轉</div>
+    <div class="q-grid" id="qGrid"></div>
+    <ul class="nav-list">
+      <li class="nav-item" style="margin-top:8px;">
+        <button class="nav-btn" data-target="s-review" onclick="goSection('s-review')">
+          <span class="nav-number">✓</span> 確認送出
+        </button>
+      </li>
+    </ul>
+    <div class="progress-wrap">
+      <div class="progress-label"><span>填寫進度</span><span id="progressPct">0%</span></div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+    </div>
+  </aside>
+
+  <div class="content">
+
+    <!-- 基本資料 -->
+    <div class="section active" id="s-basic">
+      <div class="section-header">
+        <div class="section-tag">基本資料</div>
+        <div class="section-title">請先填寫基本資料</div>
+        <div class="section-desc">這些欄位會附在送出的資料中，方便主講人彙整。</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">所屬組別（或單位）</label>
+          <input id="f-unit" type="text" placeholder="例：智慧製造組">
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label class="field-label">姓名</label>
+            <input id="f-name" type="text" placeholder="你的姓名">
+          </div>
+          <div class="field">
+            <label class="field-label">性別</label>
+            <div class="btn-group" style="margin-top:2px;">
+              <input type="radio" name="r-gender" value="男" id="g1"><label for="g1">男</label>
+              <input type="radio" name="r-gender" value="女" id="g2"><label for="g2">女</label>
+              <input type="radio" name="r-gender" value="不提供" id="g3"><label for="g3">不提供</label>
+            </div>
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label class="field-label">工研院年資</label>
+            <div class="btn-group" style="margin-top:2px; flex-wrap:wrap;">
+              <input type="radio" name="r-tenure" value="1年以下" id="t1"><label for="t1">1 年以下</label>
+              <input type="radio" name="r-tenure" value="1–3年" id="t2"><label for="t2">1–3 年</label>
+              <input type="radio" name="r-tenure" value="3–5年" id="t3"><label for="t3">3–5 年</label>
+              <input type="radio" name="r-tenure" value="5年以上" id="t4"><label for="t4">5 年以上</label>
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label">Gmail<span class="field-hint">登入 Google Meet 的信箱</span></label>
+            <input id="f-gmail" type="email" placeholder="yourname@gmail.com">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">開始填寫資料的時間<span class="field-hint">幾點幾分，請勿亂填</span></label>
+          <input id="f-starttime" type="time">
+          <div class="time-hint">系統目前時間：<span id="currentTime">--:--</span></div>
+        </div>
+        <input type="hidden" id="f-systemtime" value="">
+      </div>
+      <div class="nav-actions">
+        <span></span>
+        <button class="btn-next" onclick="validateBasicAndNext()">下一頁：問題 1 →</button>
+      </div>
+    </div>
+
+
+    <div class="section" id="s-q1">
+      <div class="section-header">
+        <div class="section-tag">問題 1 / 30</div>
+        <div class="section-title">請問在加州和紐約州的葡萄案例中，哪一州是高階葡萄的目標細分市場？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q1" value="A" id="q1a">
+              <label for="q1a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">加州</div>
+              </label>
+              <input type="radio" name="r-q1" value="B" id="q1b">
+              <label for="q1b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">紐約州</div>
+              </label>
+              <input type="radio" name="r-q1" value="C" id="q1c">
+              <label for="q1c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">兩州都可</div>
+              </label>
+              <input type="radio" name="r-q1" value="D" id="q1d">
+              <label for="q1d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">不好說</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-basic')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q1','s-q2')">下一頁：問題 2 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q2">
+      <div class="section-header">
+        <div class="section-tag">問題 2 / 30</div>
+        <div class="section-title">請問在加州和紐約州的葡萄案例中，在紐約州，高階對低階葡萄的相對價格是多少？</div>
+        <div class="section-desc">相對價格</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q2" value="A" id="q2a">
+              <label for="q2a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">2</div>
+              </label>
+              <input type="radio" name="r-q2" value="B" id="q2b">
+              <label for="q2b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">1/2</div>
+              </label>
+              <input type="radio" name="r-q2" value="C" id="q2c">
+              <label for="q2c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">3/2</div>
+              </label>
+              <input type="radio" name="r-q2" value="D" id="q2d">
+              <label for="q2d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">2/3</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q1')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q2','s-q3')">下一頁：問題 3 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q3">
+      <div class="section-header">
+        <div class="section-tag">問題 3 / 30</div>
+        <div class="section-title">請問在加州和紐約州的葡萄案例中，在加州，低階對高階葡萄的相對價格是多少？</div>
+        <div class="section-desc">相對價格</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q3" value="A" id="q3a">
+              <label for="q3a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">2</div>
+              </label>
+              <input type="radio" name="r-q3" value="B" id="q3b">
+              <label for="q3b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">1/2</div>
+              </label>
+              <input type="radio" name="r-q3" value="C" id="q3c">
+              <label for="q3c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">3/2</div>
+              </label>
+              <input type="radio" name="r-q3" value="D" id="q3d">
+              <label for="q3d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">2/3</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q2')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q3','s-q4')">下一頁：問題 4 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q4">
+      <div class="section-header">
+        <div class="section-tag">問題 4 / 30</div>
+        <div class="section-title">「旅行越遠的旅客，傾向住越好的房間」。用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q4" value="A" id="q4a">
+              <label for="q4a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">房間是運費</div>
+              </label>
+              <input type="radio" name="r-q4" value="B" id="q4b">
+              <label for="q4b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">旅客是運費</div>
+              </label>
+              <input type="radio" name="r-q4" value="C" id="q4c">
+              <label for="q4c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">遠近是運費</div>
+              </label>
+              <input type="radio" name="r-q4" value="D" id="q4d">
+              <label for="q4d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">葡萄是運費</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q3')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q4','s-q5')">下一頁：問題 5 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q5">
+      <div class="section-header">
+        <div class="section-tag">問題 5 / 30</div>
+        <div class="section-title">「到外縣市去看表演的觀眾，通常比本地觀眾選擇更好的座位」。用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q5" value="A" id="q5a">
+              <label for="q5a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">表演是運費</div>
+              </label>
+              <input type="radio" name="r-q5" value="B" id="q5b">
+              <label for="q5b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">座位是運費</div>
+              </label>
+              <input type="radio" name="r-q5" value="C" id="q5c">
+              <label for="q5c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">遠近是運費</div>
+              </label>
+              <input type="radio" name="r-q5" value="D" id="q5d">
+              <label for="q5d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">座位和遠近都是運費</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q4')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q5','s-q6')">下一頁：問題 6 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q6">
+      <div class="section-header">
+        <div class="section-tag">問題 6 / 30</div>
+        <div class="section-title">「和用餐時不需要找褓母帶小孩的夫妻相對照，用餐時需要找到褓母帶小孩才外出用餐的夫妻，常常會選擇更好的餐廳」用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q6" value="A" id="q6a">
+              <label for="q6a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">褓母費是運費</div>
+              </label>
+              <input type="radio" name="r-q6" value="B" id="q6b">
+              <label for="q6b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">餐費是運費</div>
+              </label>
+              <input type="radio" name="r-q6" value="C" id="q6c">
+              <label for="q6c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">褓母費和餐費都是運費</div>
+              </label>
+              <input type="radio" name="r-q6" value="D" id="q6d">
+              <label for="q6d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">葡萄是運費</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q5')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q6','s-q7')">下一頁：問題 7 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q7">
+      <div class="section-header">
+        <div class="section-tag">問題 7 / 30</div>
+        <div class="section-title">在台北市的君悅飯店與 W Hotels，下列何者為非？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q7" value="A" id="q7a">
+              <label for="q7a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">外來客的比率比台北市民高？</div>
+              </label>
+              <input type="radio" name="r-q7" value="B" id="q7b">
+              <label for="q7b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">旅行團的團客比率比自由行的旅客比率高</div>
+              </label>
+              <input type="radio" name="r-q7" value="C" id="q7c">
+              <label for="q7c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">目標客群是有錢人</div>
+              </label>
+              <input type="radio" name="r-q7" value="D" id="q7d">
+              <label for="q7d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">相對大多數旅館，房價偏貴</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q6')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q7','s-q8')">下一頁：問題 8 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q8">
+      <div class="section-header">
+        <div class="section-tag">問題 8 / 30</div>
+        <div class="section-title">就一般學生不討厭的課程觀察，住得越近的同學則越容易遲到，也通常會坐在教室後面... 用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q8" value="A" id="q8a">
+              <label for="q8a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">距離學校的遠近是葡萄</div>
+              </label>
+              <input type="radio" name="r-q8" value="B" id="q8b">
+              <label for="q8b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">座位離講台愈近就是高階</div>
+              </label>
+              <input type="radio" name="r-q8" value="C" id="q8c">
+              <label for="q8c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">座位離講台愈遠就是高階</div>
+              </label>
+              <input type="radio" name="r-q8" value="D" id="q8d">
+              <label for="q8d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆非</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q7')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q8','s-q9')">下一頁：問題 9 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q9">
+      <div class="section-header">
+        <div class="section-tag">問題 9 / 30</div>
+        <div class="section-title">除了在台北市有高級的日本料理店之外，在宜蘭，要吃新鮮好吃的海產，可以到南方澳。在基隆，可以到八斗子、深澳等港口。這些地方都是喜歡吃海鮮的老饕常會造訪的小漁港… 用葡萄案例來比喻，以下何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q9" value="A" id="q9a">
+              <label for="q9a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">上述現象違反第三需求法則</div>
+              </label>
+              <input type="radio" name="r-q9" value="B" id="q9b">
+              <label for="q9b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">漁港是海鮮的產地</div>
+              </label>
+              <input type="radio" name="r-q9" value="C" id="q9c">
+              <label for="q9c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">運費是自費的旅費</div>
+              </label>
+              <input type="radio" name="r-q9" value="D" id="q9d">
+              <label for="q9d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">新鮮的海鮮是高階產品</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q8')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q9','s-q10')">下一頁：問題 10 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q10">
+      <div class="section-header">
+        <div class="section-tag">問題 10 / 30</div>
+        <div class="section-title">臺灣六、七月份出產水蜜桃，在產地清境農場往梨山的公路邊，可以看到許多販賣高品質水蜜桃農舍… 用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q10" value="A" id="q10a">
+              <label for="q10a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">目標客群是外來客</div>
+              </label>
+              <input type="radio" name="r-q10" value="B" id="q10b">
+              <label for="q10b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">運費改變的是高階和低階水蜜桃的相對價格</div>
+              </label>
+              <input type="radio" name="r-q10" value="C" id="q10c">
+              <label for="q10c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">水蜜桃的運費是旅客的旅費</div>
+              </label>
+              <input type="radio" name="r-q10" value="D" id="q10d">
+              <label for="q10d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q9')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q10','s-q11')">下一頁：問題 11 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q11">
+      <div class="section-header">
+        <div class="section-tag">問題 11 / 30</div>
+        <div class="section-title">想讓吸菸者少吸菸，應如何漲香菸捐？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q11" value="A" id="q11a">
+              <label for="q11a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">高階與低階菸的價格都上漲百分之十</div>
+              </label>
+              <input type="radio" name="r-q11" value="B" id="q11b">
+              <label for="q11b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">高階與低階菸都加收固定的上漲費用（例如都加十五元台幣）</div>
+              </label>
+              <input type="radio" name="r-q11" value="C" id="q11c">
+              <label for="q11c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">高階與低階菸對加固定費效果相當</div>
+              </label>
+              <input type="radio" name="r-q11" value="D" id="q11d">
+              <label for="q11d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">加固定費用的香菸捐，可能讓人們轉吸比較便宜的普通菸</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q10')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q11','s-q12')">下一頁：問題 12 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q12">
+      <div class="section-header">
+        <div class="section-tag">問題 12 / 30</div>
+        <div class="section-title">根據第三需求法則，下列何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q12" value="A" id="q12a">
+              <label for="q12a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">講的是價格和數量的反向關係</div>
+              </label>
+              <input type="radio" name="r-q12" value="B" id="q12b">
+              <label for="q12b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">講的是相對價格和數量的反向關係</div>
+              </label>
+              <input type="radio" name="r-q12" value="C" id="q12c">
+              <label for="q12c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">講的是相對價格和相對數量的反向關係</div>
+              </label>
+              <input type="radio" name="r-q12" value="D" id="q12d">
+              <label for="q12d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q11')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q12','s-q13')">下一頁：問題 13 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q13">
+      <div class="section-header">
+        <div class="section-tag">問題 13 / 30</div>
+        <div class="section-title">第三需求法則最終決定目標細分市場是看？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q13" value="A" id="q13a">
+              <label for="q13a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">相對價格</div>
+              </label>
+              <input type="radio" name="r-q13" value="B" id="q13b">
+              <label for="q13b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">相對市佔率</div>
+              </label>
+              <input type="radio" name="r-q13" value="C" id="q13c">
+              <label for="q13c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">兩個都看</div>
+              </label>
+              <input type="radio" name="r-q13" value="D" id="q13d">
+              <label for="q13d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">兩個都無法決定</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q12')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q13','s-q14')">下一頁：問題 14 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q14">
+      <div class="section-header">
+        <div class="section-tag">問題 14 / 30</div>
+        <div class="section-title">如果市場需求的總量夠大，應用第三需求法則選擇目標細分市場，下列何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q14" value="A" id="q14a">
+              <label for="q14a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">是用市佔率來決定</div>
+              </label>
+              <input type="radio" name="r-q14" value="B" id="q14b">
+              <label for="q14b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">是用總銷售量來決定</div>
+              </label>
+              <input type="radio" name="r-q14" value="C" id="q14c">
+              <label for="q14c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">是用相對價格是否夠低來決定</div>
+              </label>
+              <input type="radio" name="r-q14" value="D" id="q14d">
+              <label for="q14d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q13')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q14','s-q15')">下一頁：問題 15 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q15">
+      <div class="section-header">
+        <div class="section-tag">問題 15 / 30</div>
+        <div class="section-title">高階品牌為何能促進產品銷售？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q15" value="A" id="q15a">
+              <label for="q15a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">高階品牌綁高階產品可以共同提升產品價格，讓產品賣得更貴</div>
+              </label>
+              <input type="radio" name="r-q15" value="B" id="q15b">
+              <label for="q15b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">當高階和低階產品都綁上高階品牌時，高階產品的相對價格較低</div>
+              </label>
+              <input type="radio" name="r-q15" value="C" id="q15c">
+              <label for="q15c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">當高階和低階產品都綁上高階品牌時，相對於低階產品，高階產品的市佔率可以較高</div>
+              </label>
+              <input type="radio" name="r-q15" value="D" id="q15d">
+              <label for="q15d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為非</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q14')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q15','s-q16')">下一頁：問題 16 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q16">
+      <div class="section-header">
+        <div class="section-tag">問題 16 / 30</div>
+        <div class="section-title">知名咖啡連鎖品牌星巴克推出了印著星巴克 logo 的保溫杯，比市面上完全相同但沒有星巴克 logo 的保溫杯可以多賣 200 元台幣。根據以上事實，下列何者為非？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q16" value="A" id="q16a">
+              <label for="q16a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">目標客群是常在星巴克喝咖啡的顧客</div>
+              </label>
+              <input type="radio" name="r-q16" value="B" id="q16b">
+              <label for="q16b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">比較保溫杯與星巴克的 logo，顧客主要買的是星巴克的 logo</div>
+              </label>
+              <input type="radio" name="r-q16" value="C" id="q16c">
+              <label for="q16c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">星巴克的 logo 能給顧客帶來價值</div>
+              </label>
+              <input type="radio" name="r-q16" value="D" id="q16d">
+              <label for="q16d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">會買有星巴克 logo 的保溫杯是因為星巴克品牌的 logo 降低了整個杯子的相對價格</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q15')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q16','s-q17')">下一頁：問題 17 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q17">
+      <div class="section-header">
+        <div class="section-tag">問題 17 / 30</div>
+        <div class="section-title">在多特徵產品中，調整產品屬性，常會：</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q17" value="A" id="q17a">
+              <label for="q17a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">改變產品屬性及產品的願付價格</div>
+              </label>
+              <input type="radio" name="r-q17" value="B" id="q17b">
+              <label for="q17b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">只改變屬性</div>
+              </label>
+              <input type="radio" name="r-q17" value="C" id="q17c">
+              <label for="q17c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">無法改變銷售量和市佔率</div>
+              </label>
+              <input type="radio" name="r-q17" value="D" id="q17d">
+              <label for="q17d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q16')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q17','s-q18')">下一頁：問題 18 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q18">
+      <div class="section-header">
+        <div class="section-tag">問題 18 / 30</div>
+        <div class="section-title">在多特徵產品中，產品屬性的安排，下列何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q18" value="A" id="q18a">
+              <label for="q18a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">高階產品中的關鍵屬性都應是高階，這可以降低相對於低階產品的相對價格</div>
+              </label>
+              <input type="radio" name="r-q18" value="B" id="q18b">
+              <label for="q18b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">高階產品中的關鍵屬性都應是高階，這可以提高相對於低階產品的銷售價格</div>
+              </label>
+              <input type="radio" name="r-q18" value="C" id="q18c">
+              <label for="q18c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">低階產品中的關鍵屬性都應是低階，這可以降低相對於高階產品的相對價格，如此，產品總價格都會比較低</div>
+              </label>
+              <input type="radio" name="r-q18" value="D" id="q18d">
+              <label for="q18d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q17')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q18','s-q19')">下一頁：問題 19 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q19">
+      <div class="section-header">
+        <div class="section-tag">問題 19 / 30</div>
+        <div class="section-title">高階和低階的單特徵產品，如果不能在當地銷售，只能在遠州和近州銷售，請問：</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q19" value="A" id="q19a">
+              <label for="q19a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">改變高低階產品的固定費用以送到遠州的運費為主</div>
+              </label>
+              <input type="radio" name="r-q19" value="B" id="q19b">
+              <label for="q19b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">改變高低階產品的固定費用以送到近州的運費為主</div>
+              </label>
+              <input type="radio" name="r-q19" value="C" id="q19c">
+              <label for="q19c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">改變高低階產品的固定費用是送到遠州和近州運費的價差</div>
+              </label>
+              <input type="radio" name="r-q19" value="D" id="q19d">
+              <label for="q19d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q18')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q19','s-q20')">下一頁：問題 20 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q20">
+      <div class="section-header">
+        <div class="section-tag">問題 20 / 30</div>
+        <div class="section-title">高階和低階的多特徵產品，如果在兩地銷售，運費之差微乎其微，請問改變兩者的相對價格的固定費用是？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q20" value="A" id="q20a">
+              <label for="q20a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">高階和低階的多特徵產品個別特徵價差的總和</div>
+              </label>
+              <input type="radio" name="r-q20" value="B" id="q20b">
+              <label for="q20b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">主要特徵之間的價差</div>
+              </label>
+              <input type="radio" name="r-q20" value="C" id="q20c">
+              <label for="q20c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">還是要以運費差為主</div>
+              </label>
+              <input type="radio" name="r-q20" value="D" id="q20d">
+              <label for="q20d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆非</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q19')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q20','s-q21')">下一頁：問題 21 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q21">
+      <div class="section-header">
+        <div class="section-tag">問題 21 / 30</div>
+        <div class="section-title">眼鏡以鏡片和鏡框的兩部份為主，對普通近視患者，請問：</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q21" value="A" id="q21a">
+              <label for="q21a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">主要會先選擇鏡框</div>
+              </label>
+              <input type="radio" name="r-q21" value="B" id="q21b">
+              <label for="q21b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">主要會先選擇鏡片</div>
+              </label>
+              <input type="radio" name="r-q21" value="C" id="q21c">
+              <label for="q21c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">鏡片和鏡框同時選</div>
+              </label>
+              <input type="radio" name="r-q21" value="D" id="q21d">
+              <label for="q21d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">不需考慮先後順序</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q20')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q21','s-q22')">下一頁：問題 22 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q22">
+      <div class="section-header">
+        <div class="section-tag">問題 22 / 30</div>
+        <div class="section-title">眼鏡以鏡片和鏡框的兩部份為主，對普通近視患者，請問：</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q22" value="A" id="q22a">
+              <label for="q22a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">是利用選擇鏡框來區分高階和低階的眼鏡</div>
+              </label>
+              <input type="radio" name="r-q22" value="B" id="q22b">
+              <label for="q22b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">是利用選擇鏡框來區分高階和低階的鏡片</div>
+              </label>
+              <input type="radio" name="r-q22" value="C" id="q22c">
+              <label for="q22c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">是利用選擇鏡片來區分高階和低階的鏡框</div>
+              </label>
+              <input type="radio" name="r-q22" value="D" id="q22d">
+              <label for="q22d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q21')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q22','s-q23')">下一頁：問題 23 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q23">
+      <div class="section-header">
+        <div class="section-tag">問題 23 / 30</div>
+        <div class="section-title">關於性價比的說明，下列何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q23" value="A" id="q23a">
+              <label for="q23a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">一個完全沒有管理意義的概念</div>
+              </label>
+              <input type="radio" name="r-q23" value="B" id="q23b">
+              <label for="q23b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">用來詮釋高階產品價值的主要工具</div>
+              </label>
+              <input type="radio" name="r-q23" value="C" id="q23c">
+              <label for="q23c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">可以幫助人們思考多買一點還是少買一點</div>
+              </label>
+              <input type="radio" name="r-q23" value="D" id="q23d">
+              <label for="q23d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆非</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q22')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q23','s-q24')">下一頁：問題 24 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q24">
+      <div class="section-header">
+        <div class="section-tag">問題 24 / 30</div>
+        <div class="section-title">下列關於性價比的描述，何者為非？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q24" value="A" id="q24a">
+              <label for="q24a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">在本質上，屬於總成本效益分析</div>
+              </label>
+              <input type="radio" name="r-q24" value="B" id="q24b">
+              <label for="q24b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">低階產品常採用的行銷訴求</div>
+              </label>
+              <input type="radio" name="r-q24" value="C" id="q24c">
+              <label for="q24c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">幫助突出產品的定位概念</div>
+              </label>
+              <input type="radio" name="r-q24" value="D" id="q24d">
+              <label for="q24d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以追求較低相對價格為目標</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q23')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q24','s-q25')">下一頁：問題 25 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q25">
+      <div class="section-header">
+        <div class="section-tag">問題 25 / 30</div>
+        <div class="section-title">在 iPhone 的銷售中，如果用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q25" value="A" id="q25a">
+              <label for="q25a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">iPhone 是運費</div>
+              </label>
+              <input type="radio" name="r-q25" value="B" id="q25b">
+              <label for="q25b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">iPhone 是葡萄</div>
+              </label>
+              <input type="radio" name="r-q25" value="C" id="q25c">
+              <label for="q25c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">記憶體的價格是運費</div>
+              </label>
+              <input type="radio" name="r-q25" value="D" id="q25d">
+              <label for="q25d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">不同記憶體可以比喻為不同細分市場</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q24')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q25','s-q26')">下一頁：問題 26 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q26">
+      <div class="section-header">
+        <div class="section-tag">問題 26 / 30</div>
+        <div class="section-title">在 iPhone 的銷售中，如果用葡萄案例來比喻，哪個是運費？哪個是葡萄？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q26" value="A" id="q26a">
+              <label for="q26a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">記憶體的價差可以比喻為運費差</div>
+              </label>
+              <input type="radio" name="r-q26" value="B" id="q26b">
+              <label for="q26b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">iPhone 的價差可以比喻為運費差</div>
+              </label>
+              <input type="radio" name="r-q26" value="C" id="q26c">
+              <label for="q26c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">不同 iPhone 可以比喻為不同細分市場</div>
+              </label>
+              <input type="radio" name="r-q26" value="D" id="q26d">
+              <label for="q26d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為非</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q25')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q26','s-q27')">下一頁：問題 27 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q27">
+      <div class="section-header">
+        <div class="section-tag">問題 27 / 30</div>
+        <div class="section-title">在蘋果公司銷售 iPhone 的機型和定價的策略中，下列何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q27" value="A" id="q27a">
+              <label for="q27a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">記憶體的價差只改變相對價格，本身無價值</div>
+              </label>
+              <input type="radio" name="r-q27" value="B" id="q27b">
+              <label for="q27b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">會改變相對價格，本身有價值</div>
+              </label>
+              <input type="radio" name="r-q27" value="C" id="q27c">
+              <label for="q27c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">不改變相對價格，本身無價值</div>
+              </label>
+              <input type="radio" name="r-q27" value="D" id="q27d">
+              <label for="q27d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">不改變相對價格，本身有價值</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q26')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q27','s-q28')">下一頁：問題 28 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q28">
+      <div class="section-header">
+        <div class="section-tag">問題 28 / 30</div>
+        <div class="section-title">用貨幣計價的產品價格，下列何者為非？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q28" value="A" id="q28a">
+              <label for="q28a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">就是名目價格</div>
+              </label>
+              <input type="radio" name="r-q28" value="B" id="q28b">
+              <label for="q28b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">不是相對價格</div>
+              </label>
+              <input type="radio" name="r-q28" value="C" id="q28c">
+              <label for="q28c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">是相對於一塊錢的相對價格</div>
+              </label>
+              <input type="radio" name="r-q28" value="D" id="q28d">
+              <label for="q28d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">一塊錢貨幣沒有產品品質的概念</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q27')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q28','s-q29')">下一頁：問題 29 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q29">
+      <div class="section-header">
+        <div class="section-tag">問題 29 / 30</div>
+        <div class="section-title">蘋果公司針對他們旗下的產品推出 Apple Care 服務。如果購買旗下任何一款硬體產品，大約額外再支付原產品 10% 的費用就可以將保固期限延長至兩年。請問，以下針對硬體所推出的保固服務的論述何者為真？</div>
+        <div class="section-desc">綜合測驗</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q29" value="A" id="q29a">
+              <label for="q29a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">是以一種以蘋果公司產品為核心特徵的多特徵產品概念</div>
+              </label>
+              <input type="radio" name="r-q29" value="B" id="q29b">
+              <label for="q29b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">Apple Care 增加了產品使用價值，也提高了產品的售價</div>
+              </label>
+              <input type="radio" name="r-q29" value="C" id="q29c">
+              <label for="q29c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">對購買 Apple Care 的消費者而言，他們認為整個蘋果公司的產品相較於其他競爭的非蘋果產品，有更低的相對價格</div>
+              </label>
+              <input type="radio" name="r-q29" value="D" id="q29d">
+              <label for="q29d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q28')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q29','s-q30')">下一頁：問題 30 →</button>
+      </div>
+    </div>
+    <div class="section" id="s-q30">
+      <div class="section-header">
+        <div class="section-tag">問題 30 / 30</div>
+        <div class="section-title">（續上題）如果我們發現購買蘋果公司 iPad 的顧客，有一些有買 Apple Care，有一些則無，請問下列敘述何者為真？</div>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label class="field-label">請選出你的答案</label>
+          <div class="option-grid">
+              <input type="radio" name="r-q30" value="A" id="q30a">
+              <label for="q30a" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 A</div>
+                <div class="opt-title">因為包括 Apple Care 與不包括 Apple Care 的 iPad 的不同相對價格，讓他們在要不要延長保固之間有了不同的決策</div>
+              </label>
+              <input type="radio" name="r-q30" value="B" id="q30b">
+              <label for="q30b" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 B</div>
+                <div class="opt-title">因為包括 Apple Care 與不包括 Apple Care 的 iPad 之間的不同性價比，讓他們在要不要延長保固之間有了不同的決策</div>
+              </label>
+              <input type="radio" name="r-q30" value="C" id="q30c">
+              <label for="q30c" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 C</div>
+                <div class="opt-title">Apple Care 如果沒有用上，就只改變 iPad 的價格，本身沒有價值</div>
+              </label>
+              <input type="radio" name="r-q30" value="D" id="q30d">
+              <label for="q30d" class="option-card">
+                <div class="opt-label"><span class="opt-check"></span>選項 D</div>
+                <div class="opt-title">以上皆為真</div>
+              </label>
+          </div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-prev" onclick="goSection('s-q29')">← 上一頁</button>
+        <button class="btn-next" onclick="nextSection('s-q30','s-review')">下一頁：確認送出 →</button>
+      </div>
+    </div>
+
+    <!-- 確認送出 -->
+    <div class="section" id="s-review">
+      <div class="section-header">
+        <div class="section-tag">確認送出</div>
+        <div class="section-title">送出前請確認內容</div>
+        <div class="section-desc">確認無誤後按下「送出反饋」。</div>
+      </div>
+      <div class="card"><table class="review-table" id="reviewTable"></table></div>
+      <button class="submit-btn" id="submitBtn" onclick="submitForm()"><span id="btnText">送出反饋</span></button>
+      <div class="status-row"><div class="status-dot ready"></div><span id="statusText">尚未送出</span></div>
+      <div class="nav-actions" style="margin-top:16px;">
+        <button class="btn-prev" onclick="goSection('s-q30')">← 返回修改</button>
+        <span></span>
+      </div>
+    </div>
+
+    <div class="success-screen" id="successScreen">
+      <div class="big">🎉</div>
+      <h2>謝謝你的回饋！</h2>
+      <p>主講人已收到你的意見<br>繼續加油 💪</p>
+      <button class="refill" onclick="location.reload()">重新填寫</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ──────────────────────────────────────────
+  // ↓↓↓ 把這行換成你的 Web App URL ↓↓↓
+  const SCRIPT_URL = '這裡換成你的 Web App URL';
+  // ──────────────────────────────────────────
+
+  const TOTAL_Q = 30;
+  const SECTIONS = ['s-basic', ...Array.from({length:TOTAL_Q},(_,i)=>`s-q${i+1}`), 's-review'];
+  const TOTAL_FILL = TOTAL_Q + 1;
+
+  const grid = document.getElementById('qGrid');
+  for (let i = 1; i <= TOTAL_Q; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'q-dot';
+    btn.textContent = i;
+    btn.dataset.target = `s-q${i}`;
+    btn.onclick = () => goSection(`s-q${i}`);
+    grid.appendChild(btn);
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const el = document.getElementById('currentTime');
+    if (el) el.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  function goSection(id) {
+    SECTIONS.forEach(s => {
+      document.getElementById(s).classList.remove('active');
+      const btn = document.querySelector(`[data-target="${s}"]`);
+      if (btn) btn.classList.remove('active');
+    });
+    document.getElementById(id).classList.add('active');
+    const btn = document.querySelector(`[data-target="${id}"]`);
+    if (btn) btn.classList.add('active');
+    updateProgress();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function nextSection(from, to) { markDone(from); saveProgress(); goSection(to); }
+  function markDone(id) {
+    const btn = document.querySelector(`[data-target="${id}"]`);
+    if (btn) btn.classList.add('done');
+  }
+  function updateProgress() {
+    const dones = document.querySelectorAll('[data-target].done').length;
+    const pct = Math.min(Math.round((dones / TOTAL_FILL) * 100), 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+  }
+
+  function validateBasicAndNext() {
+    const unit   = document.getElementById('f-unit').value.trim();
+    const name   = document.getElementById('f-name').value.trim();
+    const gender = document.querySelector('input[name="r-gender"]:checked');
+    const tenure = document.querySelector('input[name="r-tenure"]:checked');
+    const gmail  = document.getElementById('f-gmail').value.trim();
+    const time   = document.getElementById('f-starttime').value;
+    if (!unit)   { alert('請填寫「所屬組別（或單位）」。'); return; }
+    if (!name)   { alert('請填寫「姓名」。');               return; }
+    if (!gender) { alert('請選擇「性別」。');               return; }
+    if (!tenure) { alert('請選擇「工研院年資」。');         return; }
+    if (!gmail)  { alert('請填寫「Gmail」。');              return; }
+    if (!time)   { alert('請填寫「開始填寫資料的時間」。'); return; }
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('f-systemtime').value =
+      `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    nextSection('s-basic', 's-q1');
+  }
+
+  function saveProgress() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) return;
+    const data = getData();
+    const fd = new FormData();
+    Object.entries(data).forEach(([k,v]) => { if (v !== '') fd.append(k, v); });
+    fetch(SCRIPT_URL, { method:'POST', body:fd }).catch(()=>{});
+  }
+
+  function getData() {
+    const gender = document.querySelector('input[name="r-gender"]:checked');
+    const tenure = document.querySelector('input[name="r-tenure"]:checked');
+    const d = {
+      '所屬組別（或單位）': document.getElementById('f-unit').value.trim(),
+      '姓名':              document.getElementById('f-name').value.trim(),
+      '性別':              gender ? gender.value : '',
+      '工研院年資':        tenure ? tenure.value : '',
+      'Gmail':             document.getElementById('f-gmail').value.trim(),
+      '開始填寫時間':      document.getElementById('f-starttime').value,
+      '系統開始時間':      document.getElementById('f-systemtime').value,
+    };
+      const q1 = document.querySelector('input[name="r-q1"]:checked');
+      d['Q1'] = q1 ? q1.value : '';
+      const q2 = document.querySelector('input[name="r-q2"]:checked');
+      d['Q2'] = q2 ? q2.value : '';
+      const q3 = document.querySelector('input[name="r-q3"]:checked');
+      d['Q3'] = q3 ? q3.value : '';
+      const q4 = document.querySelector('input[name="r-q4"]:checked');
+      d['Q4'] = q4 ? q4.value : '';
+      const q5 = document.querySelector('input[name="r-q5"]:checked');
+      d['Q5'] = q5 ? q5.value : '';
+      const q6 = document.querySelector('input[name="r-q6"]:checked');
+      d['Q6'] = q6 ? q6.value : '';
+      const q7 = document.querySelector('input[name="r-q7"]:checked');
+      d['Q7'] = q7 ? q7.value : '';
+      const q8 = document.querySelector('input[name="r-q8"]:checked');
+      d['Q8'] = q8 ? q8.value : '';
+      const q9 = document.querySelector('input[name="r-q9"]:checked');
+      d['Q9'] = q9 ? q9.value : '';
+      const q10 = document.querySelector('input[name="r-q10"]:checked');
+      d['Q10'] = q10 ? q10.value : '';
+      const q11 = document.querySelector('input[name="r-q11"]:checked');
+      d['Q11'] = q11 ? q11.value : '';
+      const q12 = document.querySelector('input[name="r-q12"]:checked');
+      d['Q12'] = q12 ? q12.value : '';
+      const q13 = document.querySelector('input[name="r-q13"]:checked');
+      d['Q13'] = q13 ? q13.value : '';
+      const q14 = document.querySelector('input[name="r-q14"]:checked');
+      d['Q14'] = q14 ? q14.value : '';
+      const q15 = document.querySelector('input[name="r-q15"]:checked');
+      d['Q15'] = q15 ? q15.value : '';
+      const q16 = document.querySelector('input[name="r-q16"]:checked');
+      d['Q16'] = q16 ? q16.value : '';
+      const q17 = document.querySelector('input[name="r-q17"]:checked');
+      d['Q17'] = q17 ? q17.value : '';
+      const q18 = document.querySelector('input[name="r-q18"]:checked');
+      d['Q18'] = q18 ? q18.value : '';
+      const q19 = document.querySelector('input[name="r-q19"]:checked');
+      d['Q19'] = q19 ? q19.value : '';
+      const q20 = document.querySelector('input[name="r-q20"]:checked');
+      d['Q20'] = q20 ? q20.value : '';
+      const q21 = document.querySelector('input[name="r-q21"]:checked');
+      d['Q21'] = q21 ? q21.value : '';
+      const q22 = document.querySelector('input[name="r-q22"]:checked');
+      d['Q22'] = q22 ? q22.value : '';
+      const q23 = document.querySelector('input[name="r-q23"]:checked');
+      d['Q23'] = q23 ? q23.value : '';
+      const q24 = document.querySelector('input[name="r-q24"]:checked');
+      d['Q24'] = q24 ? q24.value : '';
+      const q25 = document.querySelector('input[name="r-q25"]:checked');
+      d['Q25'] = q25 ? q25.value : '';
+      const q26 = document.querySelector('input[name="r-q26"]:checked');
+      d['Q26'] = q26 ? q26.value : '';
+      const q27 = document.querySelector('input[name="r-q27"]:checked');
+      d['Q27'] = q27 ? q27.value : '';
+      const q28 = document.querySelector('input[name="r-q28"]:checked');
+      d['Q28'] = q28 ? q28.value : '';
+      const q29 = document.querySelector('input[name="r-q29"]:checked');
+      d['Q29'] = q29 ? q29.value : '';
+      const q30 = document.querySelector('input[name="r-q30"]:checked');
+      d['Q30'] = q30 ? q30.value : '';
+    return d;
+  }
+
+  const LABELS = {
+    '所屬組別（或單位）':'所屬組別','姓名':'姓名','性別':'性別',
+    '工研院年資':'工研院年資','Gmail':'Gmail',
+    '開始填寫時間':'開始填寫時間','系統開始時間':'系統開始時間（自動）',
+  };
+  for (let i = 1; i <= TOTAL_Q; i++) LABELS[`Q${i}`] = `問題 ${i}`;
+
+  function goReview() {
+    const data = getData();
+    document.getElementById('reviewTable').innerHTML =
+      Object.entries(data).map(([k,v]) => {
+        const display = v || '<span class=\"review-empty\">（未填）</span>';
+        return `<tr><th>${LABELS[k]||k}</th><td>${display}</td></tr>`;
+      }).join('');
+    goSection('s-review');
+  }
+
+  async function submitForm() {
+    const data = getData();
+    if (!data['姓名']) { alert('請回到「基本資料」補填必要欄位。'); goSection('s-basic'); return; }
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const statusText = document.getElementById('statusText');
+    btn.disabled = true; btnText.textContent = '傳送中…'; statusText.textContent = '傳送中…';
+    const fd = new FormData();
+    Object.entries(data).forEach(([k,v]) => fd.append(k, v));
+    try {
+      const res = await fetch(SCRIPT_URL, { method:'POST', body:fd });
+      const json = await res.json();
+      if (json.result === 'success') {
+        document.querySelector('.content').innerHTML =
+          `<div class="success-screen" style="display:block">
+            <div class="big">🎉</div><h2>謝謝你的回饋！</h2>
+            <p>主講人已收到你的意見<br>繼續加油 💪</p>
+            <button class="refill" onclick="location.reload()">重新填寫</button>
+          </div>`;
+      } else {
+        alert('提交失敗，請稍後再試。');
+        btn.disabled = false; btnText.textContent = '送出反饋'; statusText.textContent = '送出失敗';
+      }
+    } catch(err) {
+      alert('網路錯誤，請確認網路連線後再試。');
+      btn.disabled = false; btnText.textContent = '送出反饋'; statusText.textContent = '網路錯誤';
+    }
+  }
+</script>
+
+</body>
+</html>
